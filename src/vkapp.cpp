@@ -22,26 +22,26 @@
 
 VkApp::VkApp(App* _app) : app(_app)
 {
-    // createInstance(app->doApiDump);	// -> m_instance
-    // assert (m_instance);
-    // createPhysicalDevice();		// -> m_physicalDevice i.e. the GPU
-    // chooseQueueIndex();		// -> m_graphicsQueueIndex
-    // createDevice();			// -> m_device
-    // getCommandQueue();		// -> m_queue
+    createInstance(app->doApiDump);	// -> m_instance
+    assert (m_instance);
+    createPhysicalDevice();		// -> m_physicalDevice i.e. the GPU
+    chooseQueueIndex();		// -> m_graphicsQueueIndex
+    createDevice();			// -> m_device
+    getCommandQueue();		// -> m_queue
 
-    // loadExtensions();		// Auto generated; loads namespace of all known extensions
+    loadExtensions();		// Auto generated; loads namespace of all known extensions
 
-    // getSurface();			// -> m_surface
-    // createCommandPool();		// -> m_cmdPool
+    getSurface();			// -> m_surface
+    createCommandPool();		// -> m_cmdPool
     
-    // createSwapchain();		// -> m_swapchain
-    // createDepthResource();		// -> m_depthImage, ...
-    // createPostRenderPass();		// -> m_postRenderPass
-    // createPostFrameBuffers();	// -> m_framebuffers
+    createSwapchain();		// -> m_swapchain
+    createDepthResource();		// -> m_depthImage, ...
+    createPostRenderPass();		// -> m_postRenderPass
+    createPostFrameBuffers();	// -> m_framebuffers
 
     // createScBuffer();		// -> m_scImageBuffer
     // createPostDescriptor();		// -> m_postDesc
-    // createPostPipeline();		// -> m_postPipelineLayout
+    createPostPipeline();		// -> m_postPipelineLayout
 
     #ifdef GUI
     initGUI();
@@ -73,11 +73,11 @@ VkApp::VkApp(App* _app) : app(_app)
 void VkApp::drawFrame()
 {
 
-    // prepareFrame();
+    prepareFrame();
     
-    // VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    // beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    // vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
     {   // Extra indent for code clarity
         // updateCameraBuffer();
         
@@ -88,12 +88,12 @@ void VkApp::drawFrame()
         // else {
         //     rasterize(); }
         
-        // postProcess(); //  tone mapper and output to swapchain image.
+        postProcess(); //  tone mapper and output to swapchain image.
         
     }   // Done recording;  Execute!
     
-    // vkEndCommandBuffer(m_commandBuffer);
-    // submitFrame();  // Submit for display
+    vkEndCommandBuffer(m_commandBuffer);
+    submitFrame();  // Submit for display
 }
 
 
@@ -126,6 +126,11 @@ void VkApp::submitTempCmdBuffer(VkCommandBuffer cmdBuffer)
 
 void VkApp::prepareFrame()
 {
+    // Use a fence to wait until the command buffer has finished execution before using it again
+    while (VK_TIMEOUT == vkWaitForFences(m_device, 1, &m_waitFence, VK_TRUE, 1'000'000))
+    {
+    }
+
     // Acquire the next image from the swap chain --> m_swapchainIndex
     VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_readSemaphore,
                                             (VkFence)VK_NULL_HANDLE, &m_swapchainIndex);
@@ -133,10 +138,6 @@ void VkApp::prepareFrame()
     // Check if window has been resized -- or other(??) swapchain specific event
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         recreateSizedResources(windowSize); }
-
-    // Use a fence to wait until the command buffer has finished execution before using it again
-    while (VK_TIMEOUT == vkWaitForFences(m_device, 1, &m_waitFence, VK_TRUE, 1'000'000))
-        {}
 }
 
 void VkApp::submitFrame()
