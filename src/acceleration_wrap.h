@@ -10,6 +10,12 @@
 #include <type_traits>
 #include <string.h>
 
+// Hot Fix: 
+// - Add GLM_ENABLE_EXPERIMENTAL
+// - Add NOMINMAX to disable buit-in min/max on windows header
+#define GLM_ENABLE_EXPERIMENTAL
+#define NOMINMAX
+
 #define GLM_FORCE_RADIANS
 #define GLM_SWIZZLE
 #include <glm/glm.hpp>
