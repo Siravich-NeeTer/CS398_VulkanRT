@@ -388,7 +388,8 @@ void VkApp::createPostDescriptor()
         });
     m_postDesc.write(m_device, 0, m_scImageBuffer.Descriptor());
 
-    // @@ Destroy with m_postDesc.destroy(m_device);
+    // @@ [DONE]
+    // Destroy with m_postDesc.destroy(m_device);
 }
 
 void VkApp::createScBuffer()
@@ -400,7 +401,8 @@ void VkApp::createScBuffer()
                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
     submitTempCmdBuffer(cmdBuf);
     
-    // @@ Destroy with m_scImageBuffer.destroy(m_device);
+    // @@ [DONE]
+    //  Destroy with m_scImageBuffer.destroy(m_device);
 }
 
 ImageWrap VkApp::createBufferImage(VkExtent2D& size)
@@ -496,8 +498,10 @@ void VkApp::createScanlineRenderPass()
     info.layers          = 1;
     vkCreateFramebuffer(m_device, &info, nullptr, &m_scanlineFramebuffer);
 
-    // @@ Destroy with vkDestroyRenderPass(m_device, m_scanlineRenderPass, nullptr);
-    // @@ Destroy with vkDestroyFramebuffer(m_device, m_scanlineFramebuffer, nullptr);
+    // @@ [DONE]
+    // Destroy with vkDestroyRenderPass(m_device, m_scanlineRenderPass, nullptr);
+    // @@ [DONE]
+    // Destroy with vkDestroyFramebuffer(m_device, m_scanlineFramebuffer, nullptr);
 }
 
 void VkApp::createScDescriptorSet()
@@ -521,7 +525,8 @@ void VkApp::createScDescriptorSet()
     m_scDesc.write(m_device, ScBindings::eObjDescs, m_objDescriptionBW.buffer);
     m_scDesc.write(m_device, ScBindings::eTextures, m_objText);    
 
-    // @@ Destroy with m_scDesc.destroy(m_device);
+    // @@ [DONE]
+    // Destroy with m_scDesc.destroy(m_device);
 }
 
 void VkApp::createScPipeline()
@@ -657,8 +662,10 @@ void VkApp::createScPipeline()
     vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
     vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
     
-    // @@ To destroy:  vkDestroyPipelineLayout(m_device, m_scanlinePipelineLayout, nullptr);
-    // @@  and:        vkDestroyPipeline(m_device, m_scanlinePipeline, nullptr);
+    // @@ [DONE]
+    // To destroy:  vkDestroyPipelineLayout(m_device, m_scanlinePipelineLayout, nullptr);
+    // @@  [DONE]
+    // and:        vkDestroyPipeline(m_device, m_scanlinePipeline, nullptr);
 }
 
 // Create a Vulkan buffer to hold the camera matrices, products and inverses.
@@ -670,7 +677,8 @@ void VkApp::createMatrixBuffer()
                                | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    // @@ Destroy with m_matrixBW.destroy(m_device);
+    // @@ [DONE]
+    // Destroy with m_matrixBW.destroy(m_device);
 }
 
 // Create a Vulkan buffer containing pointers to all object buffers
@@ -682,7 +690,8 @@ void VkApp::createObjDescriptionBuffer()
     m_objDescriptionBW  = createStagedBufferWrap(cmdBuf, m_objDesc,
                                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     submitTempCmdBuffer(cmdBuf);
-    // @@ Destroy with m_objDescriptionBW.destroy(m_device);
+    // @@ [DONE]
+    // Destroy with m_objDescriptionBW.destroy(m_device);
 }
 
 void VkApp::rasterize()

@@ -34,9 +34,33 @@ void VkApp::destroyAllVulkanResources()
         ImGui_ImplVulkan_Shutdown();
     #endif
 
+    vkDestroyPipelineLayout(m_device, m_scanlinePipelineLayout, nullptr);
+    vkDestroyPipeline(m_device, m_scanlinePipeline, nullptr);
+
+    m_scDesc.destroy(m_device);
+
+    vkDestroyRenderPass(m_device, m_scanlineRenderPass, nullptr);
+    vkDestroyFramebuffer(m_device, m_scanlineFramebuffer, nullptr);
+
+    m_objDescriptionBW.destroy(m_device);
+    m_matrixBW.destroy(m_device);
+
+    for (auto& t : m_objText)
+        t.destroy(m_device);
+    for (auto& ob : m_objData)
+    {
+        ob.vertexBuffer.destroy(m_device);
+        ob.indexBuffer.destroy(m_device);
+        ob.matColorBuffer.destroy(m_device);
+        ob.matIndexBuffer.destroy(m_device);
+    }
+
     // Destroy Post-Pipeline
     vkDestroyPipelineLayout(m_device, m_postPipelineLayout, nullptr);
     vkDestroyPipeline(m_device, m_postPipeline, nullptr);
+
+    m_postDesc.destroy(m_device);
+    m_scImageBuffer.destroy(m_device);
 
     for (int i = 0; i < m_framebuffers.size(); i++)
     {
@@ -835,11 +859,11 @@ void VkApp::createPostPipeline()
 
 
     // @@ What we eventually want:
-    //createInfo.setLayoutCount         = 1;
-    //createInfo.pSetLayouts            = &m_postDesc.descSetLayout;
+    createInfo.setLayoutCount         = 1;
+    createInfo.pSetLayouts            = &m_postDesc.descSetLayout;
     // What we can do for now:
-    createInfo.setLayoutCount         = 0;
-    createInfo.pSetLayouts            = nullptr;
+    //createInfo.setLayoutCount         = 0;
+    //createInfo.pSetLayouts            = nullptr;
     
     createInfo.pushConstantRangeCount = 0;
     createInfo.pPushConstantRanges    = nullptr;
@@ -1011,8 +1035,8 @@ void VkApp::postProcess()
             / static_cast<float>(windowSize.height);
         vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_postPipeline);
         // Eventually uncomment this
-        //vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        //                        m_postPipelineLayout, 0, 1, &m_postDesc.descSet, 0, nullptr);
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                m_postPipelineLayout, 0, 1, &m_postDesc.descSet, 0, nullptr);
 
         // Weird! This draws 3 vertices but with no vertices/triangles buffers bound in.
         // Hint: The vertex shader fabricates vertices from gl_VertexIndex
