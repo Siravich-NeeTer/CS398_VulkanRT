@@ -14,4 +14,11 @@ void main()
     // @@ Raycasting: Set payload.hit = true, and fill in the
     // remaining payload values with information (provided by Vulkan)
     // about the hit point.
+    payload.hit = true;
+
+    payload.instanceIndex = gl_InstanceCustomIndexEXT;
+    payload.primitiveIndex = gl_PrimitiveID;
+    payload.bc = vec3(1.0-bc.x-bc.y, bc.x, bc.y);
+    payload.hitPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    payload.hitDist = gl_HitTEXT;
 }

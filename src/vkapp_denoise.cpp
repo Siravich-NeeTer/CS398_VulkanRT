@@ -68,6 +68,8 @@ void VkApp::createDenoiseCompPipeline()
 
 void VkApp::denoise()
 {
+    m_pcDenoise.normFactor = 0.003;
+    m_pcDenoise.depthFactor = 0.007;
 
     // Wait for RT to finish
     VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -117,5 +119,6 @@ void VkApp::denoise()
         // the input buffer (m_scImageBuffer) for the next denoising
         // loop pass.  See VkApp::raytrace for 4 examples of using
         // VkApp::CmdCopyImage to copy an image.
+        CmdCopyImage(m_denoiseBuffer, m_scImageBuffer);
     }
 }

@@ -22,6 +22,13 @@
 
 VkApp::VkApp(App* _app) : app(_app)
 {
+
+    // @@ Initialize Light/Camera value
+    app->myCamera.reset(glm::vec3(2.28f, 1.68f, 6.64f), 0.7f, -20.0f, 10.66f, 0.57f, 0.1f, 1000.0f);
+    nonrtLightAmbient = 0.2f;
+    nonrtLightIntensity = 1.0f;
+    nonrtLightPosition = vec3(0.5f, 2.5f, 3.0f);
+    
     createInstance(app->doApiDump);	// -> m_instance
     assert (m_instance);
     createPhysicalDevice();		// -> m_physicalDevice i.e. the GPU
@@ -49,12 +56,6 @@ VkApp::VkApp(App* _app) : app(_app)
     
     myloadModel("models/living_room/living_room.obj", glm::mat4(1.0));
 
-    // @@ Set Camera/Light value
-    app->myCamera.reset(glm::vec3(2.28, 1.68, 6.64), 0.7, -20.0, 10.66, 0.57, 0.1, 1000.0);
-    nonrtLightAmbient = 0.2;
-    nonrtLightIntensity = 1.0f;
-    nonrtLightPosition = vec3(0.5f, 2.5f, 3.0f);
-
     createMatrixBuffer();
     createObjDescriptionBuffer();
     
@@ -63,17 +64,17 @@ VkApp::VkApp(App* _app) : app(_app)
     createScPipeline();
 
     // @@ Raycasting ...: Initialize ray tracing capabilities
-    // createRtBuffers();
-    // initRayTracing();
-    // createRtAccelerationStructure();
-    // createRtDescriptorSet();
-    // createRtPipeline();
-    // createRtShaderBindingTable();
+    createRtBuffers();
+    initRayTracing();
+    createRtAccelerationStructure();
+    createRtDescriptorSet();
+    createRtPipeline();
+    createRtShaderBindingTable();
 
     // @@ Denoising: Initialize denoising capabilities
-    // createDenoiseBuffer();
-    // createDenoiseDescriptorSet();
-    // createDenoiseCompPipeline();
+    createDenoiseBuffer();
+    createDenoiseDescriptorSet();
+    createDenoiseCompPipeline();
 
 }
 
@@ -89,11 +90,12 @@ void VkApp::drawFrame()
         updateCameraBuffer();
         
         // Draw scene
-        // if (useRaytracer) {
-        //     raytrace();`
-        //     denoise(); }
-        // else
-               rasterize();
+        if (useRaytracer) {
+            raytrace();
+            denoise(); 
+        }
+        else
+            rasterize();
         
         postProcess(); //  tone mapper and output to swapchain image.
         
@@ -135,8 +137,7 @@ void VkApp::prepareFrame()
 {
     // Use a fence to wait until the command buffer has finished execution before using it again
     while (VK_TIMEOUT == vkWaitForFences(m_device, 1, &m_waitFence, VK_TRUE, 1'000'000))
-    {
-    }
+    {}
 
     // Acquire the next image from the swap chain --> m_swapchainIndex
     VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_readSemaphore,

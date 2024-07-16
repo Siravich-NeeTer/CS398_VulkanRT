@@ -7,7 +7,8 @@
 
 // Imgui
 // This can be defined only after some of the Vulkan initialization is complete.
-#undef GUI
+// #undef GUI
+#define GUI
 
 //#define SANM
 
@@ -193,6 +194,7 @@ public:
     std::vector<ImageWrap>  m_objText{}; // All textures of the scene
     std::vector<ObjInst>  m_objInst{}; // Instances paring an object and a transform
     BufferWrap m_lightBuff{};          // Buffer of light list
+    std::vector<Emitter> emitterList;
     void myloadModel(const std::string& filename, glm::mat4 transform);
 
     BufferWrap m_objDescriptionBW{};  // Device buffer of the OBJ descriptions

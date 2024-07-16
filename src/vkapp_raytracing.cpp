@@ -20,10 +20,35 @@ using namespace glm;
 void VkApp::createRtBuffers()
 {
     // Note: This will grow to create more than the single buffer m_rtColCurrBuffer.
+    // Color
     m_rtColCurrBuffer = createBufferImage(windowSize);
     transitionImageLayout(m_rtColCurrBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
                           VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_GENERAL, 1);
+    m_rtColPrevBuffer = createBufferImage(windowSize);
+    transitionImageLayout(m_rtColPrevBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL, 1);
+
+    // Kd
+    m_rtKdCurrBuffer = createBufferImage(windowSize);
+    transitionImageLayout(m_rtKdCurrBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL, 1);
+    m_rtKdPrevBuffer = createBufferImage(windowSize);
+    transitionImageLayout(m_rtKdPrevBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL, 1);
+
+    // Nd
+    m_rtNdCurrBuffer = createBufferImage(windowSize);
+    transitionImageLayout(m_rtNdCurrBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL, 1);
+    m_rtNdPrevBuffer = createBufferImage(windowSize);
+    transitionImageLayout(m_rtNdPrevBuffer.image, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL, 1);
 
     // @@ Destroy whatever buffers were created.
 
@@ -68,6 +93,18 @@ void VkApp::createRtDescriptorSet()
              VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR},
             {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,  // Col output image
              VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+            {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,   // EmitterList aka. explicit lighting
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+            {3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,   // m_rtColPrevBuffer
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+            {4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,   // m_rtNdCurrBuffer
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+            {5, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,   // m_rtNdPrevBuffer
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+            {6, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,   // m_rtKdCurrBuffer
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+            {7, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,   // m_rtKdPrevBuffer
+            VK_SHADER_STAGE_RAYGEN_BIT_KHR},
         });
     
 
@@ -75,6 +112,12 @@ void VkApp::createRtDescriptorSet()
 
     m_rtDesc.write(m_device, 0, m_rtBuilder.getAccelerationStructure());
     m_rtDesc.write(m_device, 1, m_rtColCurrBuffer.Descriptor());
+    m_rtDesc.write(m_device, 2, m_lightBuff.buffer);
+    m_rtDesc.write(m_device, 3, m_rtColPrevBuffer.Descriptor());
+    m_rtDesc.write(m_device, 4, m_rtNdCurrBuffer.Descriptor());
+    m_rtDesc.write(m_device, 5, m_rtNdPrevBuffer.Descriptor());
+    m_rtDesc.write(m_device, 6, m_rtKdCurrBuffer.Descriptor());
+    m_rtDesc.write(m_device, 7, m_rtKdPrevBuffer.Descriptor());
 }
 
 // Pipeline for the ray tracer: all shaders, raygen, chit, miss
@@ -314,12 +357,20 @@ void VkApp::raytrace()
 {
     // Fill the push constant structure for the ray tracing pipeline.
     // @@ Raycasting: Define and fill 3 temporary light values.
-    // @@ Pathtracing: Remove these because path tracing finds emitters defined in the model.
-    // These values define a light near the ceiling of the living room model.
     // m_pcRay.tempLightPos = vec4(nonrtLightPosition, 0.0);
     // m_pcRay.tempLightInt = vec4(nonrtLightIntensity);
     // m_pcRay.tempAmbient = vec4(nonrtLightAmbient);
+    // @@ Pathtracing: Remove these because path tracing finds emitters defined in the model.
+    // These values define a light near the ceiling of the living room model.
     m_pcRay.alignmentTest = 1234;
+    m_pcRay.frameSeed = rand() % 32768;
+    m_pcRay.rr = 0.7f;
+    m_pcRay.depth = 1;
+    while (float(rand()) / RAND_MAX < m_pcRay.rr)
+        m_pcRay.depth++;
+    m_pcRay.depth = std::min(m_pcRay.depth, 4);
+    m_pcRay.clear = app->myCamera.modified;
+    app->myCamera.modified = false;
 
     // Bind the ray tracing pipeline
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
@@ -352,8 +403,8 @@ void VkApp::raytrace()
     CmdCopyImage(m_rtColCurrBuffer, m_scImageBuffer);
 
     // @@ History and Denoising: The three Curr buffers need copying to the Prev buffers.
-    //CmdCopyImage(m_rtColCurrBuffer, m_rtColPrevBuffer);
-    //CmdCopyImage(m_rtKdCurrBuffer, m_rtKdPrevBuffer);
-    //CmdCopyImage(m_rtNdCurrBuffer, m_rtNdPrevBuffer);
+    CmdCopyImage(m_rtColCurrBuffer, m_rtColPrevBuffer);
+    CmdCopyImage(m_rtKdCurrBuffer, m_rtKdPrevBuffer);
+    CmdCopyImage(m_rtNdCurrBuffer, m_rtNdPrevBuffer);
 }
 

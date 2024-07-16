@@ -171,7 +171,40 @@ void VkApp::myloadModel(const std::string& filename, glm::mat4 transform)
     m_objData.emplace_back(object);
     m_objDesc.emplace_back(desc);
 
+    // Loop through all traingles
+    for (uint i = 0; i < meshdata.matIndx.size(); i++)
+    {
+        // Get triangle i's material
+        Material& mat = meshdata.materials[meshdata.matIndx[i]];
+        
+        // Test if triangle i is an emitter
+        if (glm::dot(mat.emission, mat.emission) > 0.0f)
+        {
+            // Retrieve the traingle's vertices:
+            Emitter emitter;
+            emitter.v0 = meshdata.vertices[meshdata.indices[3 * i + 0]].pos;
+            emitter.v1 = meshdata.vertices[meshdata.indices[3 * i + 1]].pos;
+            emitter.v2 = meshdata.vertices[meshdata.indices[3 * i + 2]].pos;
+            
+            emitter.emission = mat.emission;
+            emitter.index = i;
+            emitter.normal = normalize(cross(emitter.v1 - emitter.v0, emitter.v2 - emitter.v0));
+            emitter.area = 0.5f * cross(emitter.v1 - emitter.v0, emitter.v2 - emitter.v0).length();
+
+            emitterList.emplace_back(emitter);
+        }
+    }
+    m_lightBuff = createBufferWrap(sizeof(emitterList[0]) * emitterList.size(),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                    | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VkCommandBuffer commandBuffer = createTempCmdBuffer();
+    vkCmdUpdateBuffer(commandBuffer, m_lightBuff.buffer, 0,
+        sizeof(emitterList[0]) * emitterList.size(), emitterList.data());
+    submitTempCmdBuffer(commandBuffer);
+
     // @@ At shutdown:
+    // destroy in destroyAllVulkanResources()
     //   Destroy all textures with:  for (t:m_objText) t.destroy(m_device); 
     //   Destroy all buffers with:   for (ob:objDesc) ob.destroy(m_device);
 }

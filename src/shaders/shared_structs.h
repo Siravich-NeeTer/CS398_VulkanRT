@@ -96,10 +96,15 @@ struct PushConstantRaster
 struct PushConstantRay
 {
     // @@ Raycasting: Declare 3 temporary light values.  
+    // ALIGNAS(16) vec4 tempLightPos;  // TEMPORARY: vec4(0.5f, 2.5f, 3.0f, 0.0);
+    // ALIGNAS(16) vec4 tempLightInt;  // TEMPORARY: vec4(2.5, 2.5, 2.5, 0.0);
+    // ALIGNAS(16) vec4 tempAmbient;   // TEMPORARY: vec4(0.2);
     // @@ Pathtracing: Remove these 3 values because path tracing finds light by tracing rays.
-    // ALIGNAS(16) vec4 tempLightPos;
-    // ALIGNAS(16) vec4 tempLightInt;
-    // ALIGNAS(16) vec4 tempAmbient;
+    ALIGNAS(4) int frameSeed;
+    ALIGNAS(4) float rr;        // Russian-Roulette Threshold
+    ALIGNAS(4) int depth;       // Maximum Depth based on rr value
+    ALIGNAS(4) bool explicitLight;
+
     ALIGNAS(4) bool clear;  // Tell the ray generation shader to start accumulation from scratch
     ALIGNAS(4) float exposure;
     // @@ Set alignmentTest to a known value in C++;  Test for that value in the shader!
@@ -122,10 +127,22 @@ struct Material  // Created by readModel; used in shaders
   int   textureId;
 };
 
+struct Emitter
+{
+    vec3 point;         // Will use in raytrace.rgen (SampleLight)
+
+    vec3 v0, v1, v2;    // Vertices of light emitting triangle
+    vec3 emission;      // Its emission
+    vec3 normal;        // Its normal
+    float area;         // Its traingle area
+    uint index;         // The triangle index in the model's list of triangles
+};
+
 
 // Push constant structure for the ray tracer
 struct PushConstantDenoise
 {
+    float normFactor, depthFactor;
     int  stepwidth;  
 };
 

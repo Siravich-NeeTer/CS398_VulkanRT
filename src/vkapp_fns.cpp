@@ -3,9 +3,8 @@
 #include <array>
 #include <iostream>     // std::cout
 #include <fstream>      // std::ifstream
-#include <string>       // std::string
-#include <set>          // std::set
 
+#include <set>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -22,6 +21,7 @@
 
 void VkApp::destroyAllVulkanResources()
 {
+
     // @@
     vkDeviceWaitIdle(m_device);  // Uncomment this when you have an m_device created.
 
@@ -30,24 +30,51 @@ void VkApp::destroyAllVulkanResources()
 
     // Desrtoy ImGui stuff
     #ifdef GUI
-        vkDestroyDescriptorPool(m_device, m_imguiDescPool, nullptr);
-        ImGui_ImplVulkan_Shutdown();
+    vkDestroyDescriptorPool(m_device, m_imguiDescPool, nullptr);
+    ImGui_ImplVulkan_Shutdown();
     #endif
 
+    vkDestroyPipelineLayout(m_device, m_denoiseCompPipelineLayout, nullptr);
+    vkDestroyPipeline(m_device, m_denoisePipeline, nullptr);
+    m_denoiseDesc.destroy(m_device);
+    m_denoiseBuffer.destroy(m_device);
+
+    m_shaderBindingTableBW.destroy(m_device);
+    
+    vkDestroyPipelineLayout(m_device, m_rtPipelineLayout, nullptr);
+    vkDestroyPipeline(m_device, m_rtPipeline, nullptr);
+
+    m_rtDesc.destroy(m_device);
+    m_rtBuilder.destroy();
+
+    m_rtNdPrevBuffer.destroy(m_device);
+    m_rtNdCurrBuffer.destroy(m_device);
+    m_rtKdPrevBuffer.destroy(m_device);
+    m_rtKdCurrBuffer.destroy(m_device);
+    m_rtColPrevBuffer.destroy(m_device);
+    m_rtColCurrBuffer.destroy(m_device);
+
+    // Destroy Pipeline
     vkDestroyPipelineLayout(m_device, m_scanlinePipelineLayout, nullptr);
     vkDestroyPipeline(m_device, m_scanlinePipeline, nullptr);
-
+    
+    // Destroy scanline descriptor
     m_scDesc.destroy(m_device);
-
+    
     vkDestroyRenderPass(m_device, m_scanlineRenderPass, nullptr);
     vkDestroyFramebuffer(m_device, m_scanlineFramebuffer, nullptr);
-
+    
+    //Destroy BufferWrap
     m_objDescriptionBW.destroy(m_device);
     m_matrixBW.destroy(m_device);
 
-    for (auto& t : m_objText)
+    //Destroy Texture/Model Data
+    m_lightBuff.destroy(m_device);
+
+    for (ImageWrap& t : m_objText)
         t.destroy(m_device);
-    for (auto& ob : m_objData)
+
+    for (ObjData& ob : m_objData)
     {
         ob.vertexBuffer.destroy(m_device);
         ob.indexBuffer.destroy(m_device);
@@ -58,7 +85,8 @@ void VkApp::destroyAllVulkanResources()
     // Destroy Post-Pipeline
     vkDestroyPipelineLayout(m_device, m_postPipelineLayout, nullptr);
     vkDestroyPipeline(m_device, m_postPipeline, nullptr);
-
+    
+    // Destroy Post-Descriptor
     m_postDesc.destroy(m_device);
     m_scImageBuffer.destroy(m_device);
 
@@ -88,7 +116,7 @@ void VkApp::createInstance(bool doApiDump)
     uint32_t countGLFWextensions{0};
     const char** reqGLFWextensions = glfwGetRequiredInstanceExtensions(&countGLFWextensions);
 
-    // @@ [DONE]
+    // @@
     // Append each GLFW required extension in reqGLFWextensions to reqInstanceExtensions
     // Print them out while your are at it
     printf("GLFW required extensions:\n");
@@ -99,6 +127,7 @@ void VkApp::createInstance(bool doApiDump)
         reqInstanceExtensions.push_back(reqGLFWextensions[i]);
     }
     std::cout << "\n";
+    // ...
 
     // Suggestion: Parse a command line argument to set/unset doApiDump
     // If included, the api_dump layer should be first on reqInstanceLayers
@@ -111,7 +140,7 @@ void VkApp::createInstance(bool doApiDump)
     std::vector<VkLayerProperties> availableLayers(count);
     vkEnumerateInstanceLayerProperties(&count, availableLayers.data());
 
-    // @@ [DONE]
+    // @@
     // Print out the availableLayers
     printf("InstanceLayer count: %d\n", count);
     for (int i = 0; i < count; i++)
@@ -119,13 +148,14 @@ void VkApp::createInstance(bool doApiDump)
         std::cout << availableLayers[i].layerName << "\n";
     }
     std::cout << "\n";
+    // ...  use availableLayers[i].layerName
 
     // Another two step dance
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
     std::vector<VkExtensionProperties> availableExtensions(count);
     vkEnumerateInstanceExtensionProperties(nullptr, &count, availableExtensions.data());
 
-    // @@ [DONE]
+    // @@
     // Print out the availableExtensions
     printf("InstanceExtensions count: %d\n", count);
     for (int i = 0; i < count; i++)
@@ -133,6 +163,7 @@ void VkApp::createInstance(bool doApiDump)
         std::cout << availableExtensions[i].extensionName << "\n";
     }
     std::cout << "\n";
+    // ...  use availableExtensions[i].extensionName
 
     VkApplicationInfo applicationInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     applicationInfo.pApplicationName = "rtrt";
@@ -151,7 +182,7 @@ void VkApp::createInstance(bool doApiDump)
 
     VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance);
 
-    // @@ [DONE]
+    // @@
     // Verify VkResult is VK_SUCCESS
     // Document with a cut-and-paste of the three list printouts above.
     // To destroy: vkDestroyInstance(m_instance, nullptr);
@@ -185,8 +216,7 @@ void VkApp::createPhysicalDevice()
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
                                              &extCount, extensionProperties.data());
 
-        // @@ [DONE]
-        // This code is in a loop iterating variable physicalDevice
+        // @@ This code is in a loop iterating variable physicalDevice
         // through a list of all physicalDevices(GPUs).  The
         // physicalDevice's properties (GPUproperties) and a list of
         // its extension properties (extensionProperties) are retrieved
@@ -201,6 +231,7 @@ void VkApp::createPhysicalDevice()
         //    All reqDeviceExtensions can be found in the GPUs extensionProperties list
         //      That is: for all i, there exists a j such that:
         //                 reqDeviceExtensions[i] == extensionProperties[j].extensionName
+
         bool isGPUTypeCompatible = (GPUproperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
         bool isExtensionCompatible = true;
 
@@ -253,8 +284,7 @@ void VkApp::chooseQueueIndex()
     std::vector<VkQueueFamilyProperties> queueProperties(mpCount);
     vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &mpCount, queueProperties.data());
 
-    // @@ [DONE]
-    // How many queue families does your Vulkan offer?  Which of
+    // @@ How many queue families does your Vulkan offer?  Which of
     // the three flags does each offer?  Which of them, by index, has
     // the above three required flags?
     std::cout << "QueueFamilies Count: " << queueProperties.size() << "\n";
@@ -263,15 +293,14 @@ void VkApp::chooseQueueIndex()
         std::cout << i << " : " << queueProperties[i].queueFlags << "\n";
     }
 
-    // @@ [DONE]
-    // Search the list for (the index of) the first queue family
+    // @@ Search the list for (the index of) the first queue family
     // that has the required flags in queueProperties[i].queueFlags.  Record the index in
     // m_graphicsQueueIndex.
     for (int i = 0; i < queueProperties.size(); i++)
     {
         if (queueProperties[i].queueFlags & requiredQueueFlags)
         {
-            m_graphicsQueueIndex = i;
+            m_graphicsQueueIndex = i; 
             break;
         }
     }
@@ -282,9 +311,10 @@ void VkApp::chooseQueueIndex()
 
 void VkApp::createDevice()
 {
-    // @@ [DONE]
+    // @@
     // Build a pNext chain of the following six "feature" structures:
     //   features2->features11->features12->features13->accelFeature->rtPipelineFeature->NULL
+
 
     // Hint: Keep it simple; add a second parameter (the pNext
     // pointer) to each structure's initializer pointing up to the
@@ -308,6 +338,8 @@ void VkApp::createDevice()
     VkPhysicalDeviceFeatures2 features2{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
 
+    // @@ If you are curious, document the whole filled in pNext chain
+    // using an api_dump and examine all the many features.
     features2.pNext = &features11;
     features11.pNext = &features12;
     features12.pNext = &features13;
@@ -317,8 +349,6 @@ void VkApp::createDevice()
 
     // Let Vulkan fill in all structures on the pNext chain
     vkGetPhysicalDeviceFeatures2(m_physicalDevice, &features2);
-    // @@ If you are curious, document the whole filled in pNext chain
-    // using an api_dump and examine all the many features. 
 
     float priority = 1.0;
     VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
@@ -368,13 +398,12 @@ void VkApp::getSurface()
     VkResult glfwCreateResult = glfwCreateWindowSurface(m_instance, app->GLFW_window, nullptr, &m_surface);
     VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(m_physicalDevice, m_graphicsQueueIndex,
                                          m_surface, &isSupported);
-    // @@ [DONE]
-    // Verify VK_SUCCESS from both the glfw... and the vk... calls.
+    // @@ Verify VK_SUCCESS from both the glfw... and the vk... calls.
     assert(glfwCreateResult == VK_SUCCESS && result == VK_SUCCESS);
-    
-    // @@ [DONE]
-    // Verify isSupported==VK_TRUE, meaning that Vulkan supports presenting on this surface.
+
+    // @@ Verify isSupported==VK_TRUE, meaning that Vulkan supports presenting on this surface.
     //To destroy: vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+    // destroy in destroyAllVulkanResources()
     assert(isSupported == VK_TRUE);
 }
 
@@ -391,19 +420,19 @@ void VkApp::createCommandPool()
     poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolCreateInfo.queueFamilyIndex = m_graphicsQueueIndex;
     result = vkCreateCommandPool(m_device, &poolCreateInfo, nullptr, &m_cmdPool);
-    // @@ [DONE]
-    // Verify VK_SUCCESS
+    // @@ Verify VK_SUCCESS
     // To destroy: vkDestroyCommandPool(m_device, m_cmdPool, nullptr);
+    // destroy in destroyAllVulkanResources()
     assert(result == VK_SUCCESS);
     
+
     // Create a command buffer
     VkCommandBufferAllocateInfo allocateInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocateInfo.commandPool        = m_cmdPool;
     allocateInfo.commandBufferCount = 1;
     allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     result = vkAllocateCommandBuffers(m_device, &allocateInfo, &m_commandBuffer);
-    // @@ [DONE]
-    // Verify VK_SUCCESS
+    // @@ Verify VK_SUCCESS
     // Nothing to destroy -- the pool owns the command buffer.
     assert(result == VK_SUCCESS);
 }
@@ -420,8 +449,7 @@ void VkApp::createSwapchain()
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
 
-    // @@ [DONE]
-    // Roll your own two step process to retrieve a list of present mode into
+    // @@  Roll your own two step process to retrieve a list of present mode into
     //    std::vector<VkPresentModeKHR> presentModes;
     //  by making two calls to
     //    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, ...);
@@ -431,29 +459,24 @@ void VkApp::createSwapchain()
     std::vector<VkPresentModeKHR> presentModes(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &presentModeCount, presentModes.data());
 
-    // @@ [DONE]
-    // Document your preset modes. I especially want to know if
+    // @@ Document your preset modes. I especially want to know if
     // your system offers VK_PRESENT_MODE_MAILBOX_KHR mode.  My
     // high-end windows desktop does; My higher-end Linux laptop
     // doesn't.
     bool isSupportMailboxMode = std::find(presentModes.begin(), presentModes.end(), VK_PRESENT_MODE_MAILBOX_KHR) != presentModes.end();
     std::cout << "Does system support VK_PRESENT_MODE_MAILBOX_KHR: " << (isSupportMailboxMode ? "Yes" : "No") << "\n";
 
-
     // Choose VK_PRESENT_MODE_FIFO_KHR as a default (this must be supported)
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR; // Support is required.
-    // @@ [DONE]
-    // But choose VK_PRESENT_MODE_MAILBOX_KHR if it can be found in
+    // @@ But choose VK_PRESENT_MODE_MAILBOX_KHR if it can be found in
     // the retrieved presentModes. Several Vulkan tutorials opine that
     // MODE_MAILBOX is the premier mode, but this may not be best for
     // us -- expect more about this later.
     if (isSupportMailboxMode)
         swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-  
 
     // Get the list of VkFormat's that are supported:
-    //@@ [DONE]
-    // Do the two step process to retrieve a list of surface formats in
+    //@@ Do the two step process to retrieve a list of surface formats in
     //   std::vector<VkSurfaceFormatKHR> formats;
     // with two calls to
     //   vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, ...);
@@ -467,16 +490,14 @@ void VkApp::createSwapchain()
     VkFormat surfaceFormat       = VK_FORMAT_UNDEFINED;               // Temporary value.
     VkColorSpaceKHR surfaceColor = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; // Temporary value
     */
-    // @@ [DONE]
-    // Replace the above two temporary lines with the following two
+    // @@ Replace the above two temporary lines with the following two
     // to choose the first format and its color space as defaults:
     //  VkFormat surfaceFormat = formats[0].format;
     //  VkColorSpaceKHR surfaceColor  = formats[0].colorSpace;
     VkFormat surfaceFormat = formats[0].format;
     VkColorSpaceKHR surfaceColor = formats[0].colorSpace;
 
-    // @@ [DONE]
-    // Then search the formats (from several lines up) to choose
+    // @@ Then search the formats (from several lines up) to choose
     // format VK_FORMAT_B8G8R8A8_UNORM (and its color space) if such
     // exists.  Document your list of formats/color-spaces, and your
     // particular choice.
@@ -547,12 +568,10 @@ void VkApp::createSwapchain()
     _i.clipped                  = true;
 
     VkResult result = vkCreateSwapchainKHR(m_device, &_i, nullptr, &m_swapchain);
-    // @@ [DONE]
-    // Verify VK_SUCCESS
+    // @@ Verify VK_SUCCESS
     assert(result == VK_SUCCESS);
     
-    //@@ [DONE]
-    // Do the two step process to retrieve the list of (3) swapchain images
+    //@@ Do the two step process to retrieve the list of (3) swapchain images
     //   m_swapchainImages (of type std::vector<VkImage>)
     // with two calls to
     //   vkGetSwapchainImagesKHR(m_device, m_swapchain, ...);
@@ -561,7 +580,7 @@ void VkApp::createSwapchain()
     vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, nullptr);
     m_swapchainImages.resize(m_imageCount);
     vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, m_swapchainImages.data());
-
+    
     m_barriers.resize(m_imageCount);
     m_imageViews.resize(m_imageCount);
 
@@ -635,7 +654,7 @@ void VkApp::destroySwapchain()
 {
     vkDeviceWaitIdle(m_device);
 
-    // @@ [DONE]
+    // @@
     // Destroy all (3)  m_imageViews with vkDestroyImageView(m_device, imageView, nullptr)
     for (auto imageView : m_imageViews)
     {
@@ -732,14 +751,12 @@ ImageWrap VkApp::createImageWrap(uint32_t width, uint32_t height,
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
     VkResult result;
-    result = vkAllocateMemory(m_device, &allocInfo, nullptr, &myImage.memory);    
-    // @@ [DONE]
-    // Verify success for vkCreateImage
+    result = vkAllocateMemory(m_device, &allocInfo, nullptr, &myImage.memory);
+    // @@ Verify success for vkCreateImage
     assert(result == VK_SUCCESS);
     
     result = vkBindImageMemory(m_device, myImage.image, myImage.memory, 0);
-    // @@ [DONE]
-    // Verify success for vkAllocateMemory
+    // @@ Verify success for vkAllocateMemory
     assert(result == VK_SUCCESS);
 
     myImage.imageView = VK_NULL_HANDLE;
@@ -763,10 +780,9 @@ VkImageView VkApp::createImageView(VkImage image, VkFormat format,
     
     VkImageView imageView;
     VkResult result = vkCreateImageView(m_device, &viewInfo, nullptr, &imageView);
-    // @@ [DONE] 
-    // Verify success for vkCreateImageView
+    // @@ Verify success for vkCreateImageView
     assert(result == VK_SUCCESS);
-    
+
     return imageView;
 }
 
@@ -841,13 +857,13 @@ void VkApp::createPostFrameBuffers()
     {
         fbattachments[0] = m_imageViews[i];         // A color attachment from the swap chain
         fbattachments[1] = m_depthImage.imageView;  // A depth attachment
+        
         VkResult result = vkCreateFramebuffer(m_device, &_ci, nullptr, &m_framebuffers[i]); 
-        // @@ [DONE]
-        // Verify success
         assert(result == VK_SUCCESS);
     }
 
     // To destroy: In a loop, call: vkDestroyFramebuffer(m_device, m_framebuffers[i], nullptr);
+    // Verify success
 }
 
 
@@ -862,8 +878,8 @@ void VkApp::createPostPipeline()
     createInfo.setLayoutCount         = 1;
     createInfo.pSetLayouts            = &m_postDesc.descSetLayout;
     // What we can do for now:
-    //createInfo.setLayoutCount         = 0;
-    //createInfo.pSetLayouts            = nullptr;
+    // createInfo.setLayoutCount         = 0;
+    // createInfo.pSetLayouts            = nullptr;
     
     createInfo.pushConstantRangeCount = 0;
     createInfo.pPushConstantRanges    = nullptr;
@@ -986,7 +1002,7 @@ void VkApp::createPostPipeline()
 
     // The pipeline has fully compiled copies of the shaders, so these
     // intermediate (SPV) versions can be destroyed.
-    // @@ [DONE]
+    // @@
     // For the two modules fragShaderModule and vertShaderModule
     // destroy right *here* via vkDestroyShaderModule(m_device, ..., nullptr);
     vkDestroyShaderModule(m_device, vertShaderModule, nullptr);

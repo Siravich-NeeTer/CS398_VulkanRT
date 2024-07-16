@@ -20,15 +20,18 @@ void drawGUI(VkApp& VK)
     // ImGui::ShowDemoWindow();  // Turn on ImGui's demonstration of all widgets.
 
     // Display the frame rate:
-    // ImGui::Text("Rate %.3f ms/frame (%.1f FPS)",
-    //             1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("Rate %.3f ms/frame (%.1f FPS)",
+                1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
     // An example check box:
-    // ImGui::Checkbox("Ray Tracer mode", &VK.useRaytracer);
+    ImGui::Checkbox("Ray Tracer mode", &VK.useRaytracer);
 
     // An example slider:
-    // if (ImGui::SliderFloat("Exposure", &VK.m_pcRay.exposure, 0.5f, 8.0f, "%.5f"))
-    //    VK.m_pcRay.clear = true;
+    if (ImGui::SliderFloat("Exposure", &VK.m_pcRay.exposure, 0.5f, 8.0f, "%.5f"))
+        VK.m_pcRay.clear = true;
+
+    if (ImGui::Checkbox("Explicit Light", &VK.m_pcRay.explicitLight))
+        VK.app->myCamera.modified = true;
 
 }
 
