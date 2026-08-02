@@ -55,37 +55,53 @@ float X(float d)
     else
         return 0.0;
 }
-float D_Factor(vec3 m, vec3 N, float a)
+// GGX normal distribution D(m)
+float D_Factor(vec3 m, vec3 N, float alpha)
 {
-    return X(dot(m, N)) * ((a + 2.0f) / pi2) * pow(dot(m, N), a);
+    float mN = dot(m, N);
+    float tan_square_theta_m = (1.0 - mN * mN) / (mN * mN);
+    float alpha_square = alpha * alpha;
+
+    return clamp(mN, 0.0, 1.0) * alpha_square
+         / (pi * pow(mN, 4) * pow(alpha_square + tan_square_theta_m, 2));
 }
 vec3 F_Factor(vec3 Ks, float d)
 {
     return Ks + (vec3(1.0f) - Ks) * pow(1.0f - abs(d), 5.0f);
 }
+// GGX Smith G1 for one direction v (either Wi or Wo)
 float G1_Factor(vec3 v, vec3 m, vec3 N, float alpha)
 {
-    float tan_v = sqrt(1.0f - pow(dot(v, N), 2)) / dot(v, N);
-    float a = sqrt(alpha / 2.0f + 1.0f) / tan_v;
+    float vN = dot(v, N);
+    float tan_square_theta_v = (1.0 - vN * vN) / (vN * vN);
 
-    return X(dot(v, m) / dot(v, N)) * (a < 1.6f ? (3.535 * a + 2.181 * a * a) / (1.0 + 2.276 * a + 2.577 * a * a) : 1.0f);
+    if(vN > 1.0 || sqrt(tan_square_theta_v) == 0)
+        return 1.0;
+
+    float alpha_square = alpha * alpha;
+    return X(dot(v, m) / vN) * 2.0 / (1.0 + sqrt(1.0 + alpha_square * tan_square_theta_v));
 }
-float G_Factor(vec3 Wi, vec3 Wo, vec3 m, vec3 N, Material mat)
+float G_Factor(vec3 Wi, vec3 Wo, vec3 m, vec3 N, float alpha)
 {
-    return G1_Factor(Wi, m, N, mat.shininess) * G1_Factor(Wo, m, N, mat.shininess);
+    return G1_Factor(Wi, m, N, alpha) * G1_Factor(Wo, m, N, alpha);
 }
 
-vec3 EvalBrdf(vec3 N, vec3 L, vec3 V, Material mat) 
+vec3 EvalBrdf(vec3 N, vec3 L, vec3 V, Material mat)
 {
-    float alpha = mat.shininess;
+    vec3 Kd = mat.diffuse;
+    vec3 Ks = mat.specular;
+    const float alpha = mat.shininess;
+
+    // L = Wi, V = Wo, m = H
     vec3 H = normalize(L + V);
+    float NL = dot(N, L);
+    float NV = dot(N, V);
 
     float D = D_Factor(H, N, alpha);
-    vec3 F = F_Factor(mat.specular, dot(L, H));
-    //float G = 1.0f / pow(dot(L, H), 2.0f);
-    float G = G_Factor(L, V, H, N, mat);
+    vec3  F = F_Factor(Ks, dot(L, H));
+    float G = G_Factor(L, V, H, N, alpha);
 
-    return X(dot(N, L)) * (mat.diffuse / pi) + (D * F * G) / (4.0f * dot(L, N) * dot(V, N));
+    return max(NL, 0.0) * ((Kd / pi) + (D * G * F) / (4.0 * abs(NL) * abs(NV)));
 }
 
 // @@ Pathtracing: Write SampleBrdf, PdfBrdf, ...
@@ -285,7 +301,7 @@ void main()
             // @@ Raycasting: break from the (wanna-be) loop
             // @@ Pathtracing: break from the Monte-Carlo loop
             // @@ History: if (i==0) record that a first-hit did not occur
-            firstHit = false;
+            // firstHit = false;
             break;
         }
         
@@ -293,6 +309,7 @@ void main()
         Material mat;
         vec3 nrm;
         GetHitObjectData(mat, nrm);
+        mat.emission *= 2.0;
         
         // @@ History: if (i==0) record first-hit stuff.
         if(i == 0)

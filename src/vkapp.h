@@ -136,7 +136,7 @@ public:
     std::vector<VkImageMemoryBarrier> m_barriers{};  // Filled in  VkImageMemoryBarrier objects
     VkFence m_waitFence{}; 
     VkSemaphore m_readSemaphore{};
-    VkSemaphore m_writtenSemaphore{};
+    std::vector<VkSemaphore> m_writtenSemaphores{};
     VkExtent2D windowSize{0, 0}; // Size of the window
     void createSwapchain();
     void destroySwapchain();

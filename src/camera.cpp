@@ -34,7 +34,7 @@ void Camera::animateTo(float deltaTime, float endSpin, float endTilt, const glm:
 
 glm::mat4 Camera::perspective(const float aspect)
 {
-    glm::mat4 P;
+    glm::mat4 P(0.0f);
 
     float rx = ry*aspect;
     P[0][0] = 1.0/rx;

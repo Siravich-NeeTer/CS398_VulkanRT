@@ -60,7 +60,7 @@ VkDeviceAddress getBufferDeviceAddress(VkDevice device, VkBuffer buffer) {
 void VkApp::myloadModel(const std::string& filename, glm::mat4 transform)
 {
     ModelData meshdata;
-    meshdata.readAssimpFile(filename.c_str(), glm::mat4());
+    meshdata.readAssimpFile(filename.c_str(), transform);
 
     printf("vertices: %zd\n", meshdata.vertices.size());
     printf("indices: %zd (%zd)\n", meshdata.indices.size(), meshdata.indices.size()/3);
@@ -189,7 +189,7 @@ void VkApp::myloadModel(const std::string& filename, glm::mat4 transform)
             emitter.emission = mat.emission;
             emitter.index = i;
             emitter.normal = normalize(cross(emitter.v1 - emitter.v0, emitter.v2 - emitter.v0));
-            emitter.area = 0.5f * cross(emitter.v1 - emitter.v0, emitter.v2 - emitter.v0).length();
+            emitter.area = 0.5f * length(cross(emitter.v1 - emitter.v0, emitter.v2 - emitter.v0));
 
             emitterList.emplace_back(emitter);
         }
@@ -271,7 +271,7 @@ void ModelData::readAssimpFile(const std::string& path, const mat4& M)
             if (AI_SUCCESS == hs) Ks = vec3(spec.r, spec.g, spec.b);
             newmat.diffuse = {Kd[0], Kd[1], Kd[2]};
             newmat.specular = {Ks[0], Ks[1], Ks[2]};
-            newmat.shininess = alpha; //sqrtf(2.0f/(2.0f+alpha));
+            newmat.shininess = sqrtf(2.0f/(2.0f+alpha)); // Convert Phong exponent Ns to GGX roughness
             newmat.emission = {0,0,0};
             newmat.textureId = -1;  }
         

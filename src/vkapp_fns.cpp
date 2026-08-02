@@ -641,7 +641,11 @@ void VkApp::createSwapchain()
     
     VkSemaphoreCreateInfo semCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_readSemaphore);
-    vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_writtenSemaphore);
+    m_writtenSemaphores.resize(m_imageCount);
+    for (size_t i = 0; i < m_imageCount; i++)
+    {
+        vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_writtenSemaphores[i]);
+    }
     //NAME(m_readSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_readSemaphore");
     //NAME(m_writtenSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_writtenSemaphore");
     //NAME(m_queue, VK_OBJECT_TYPE_QUEUE, "m_queue");
@@ -664,7 +668,10 @@ void VkApp::destroySwapchain()
     // Destroy the synchronization items: 
     vkDestroyFence(m_device, m_waitFence, nullptr);
     vkDestroySemaphore(m_device, m_readSemaphore, nullptr);
-    vkDestroySemaphore(m_device, m_writtenSemaphore, nullptr);
+    for (size_t i = 0; i < m_imageCount; i++)
+    {
+        vkDestroySemaphore(m_device, m_writtenSemaphores[i], nullptr);
+    }
 
     // Destroy the actual swapchain with: vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
     vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);

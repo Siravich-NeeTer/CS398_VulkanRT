@@ -162,7 +162,7 @@ void VkApp::submitFrame()
     _si_.waitSemaphoreCount   = 1;  
     _si_.pWaitSemaphores = &m_readSemaphore;  // waited upon before execution
     _si_.signalSemaphoreCount = 1;
-    _si_.pSignalSemaphores    = &m_writtenSemaphore; // signaled when execution finishes
+    _si_.pSignalSemaphores    = &m_writtenSemaphores[m_swapchainIndex]; // signaled when execution finishes
     _si_.commandBufferCount = 1;
     _si_.pCommandBuffers = &m_commandBuffer;
     if (vkQueueSubmit(m_queue, 1, &_si_, m_waitFence) != VK_SUCCESS) {
@@ -171,7 +171,7 @@ void VkApp::submitFrame()
     // Present frame
     VkPresentInfoKHR _i_{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     _i_.waitSemaphoreCount = 1;
-    _i_.pWaitSemaphores    = &m_writtenSemaphore;;
+    _i_.pWaitSemaphores    = &m_writtenSemaphores[m_swapchainIndex];
     _i_.swapchainCount     = 1;
     _i_.pSwapchains        = &m_swapchain;
     _i_.pImageIndices      = &m_swapchainIndex;
