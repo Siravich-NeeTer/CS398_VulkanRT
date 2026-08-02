@@ -58,6 +58,7 @@ void VkApp::createRtBuffers()
 void VkApp::initRayTracing()
 {
     m_pcRay.exposure = 2.0;
+    m_pcRay.explicitLight = true;  // Explicit light sampling greatly reduces path-tracing noise
     
     // Requesting ray tracing properties
     VkPhysicalDeviceProperties2 prop2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};

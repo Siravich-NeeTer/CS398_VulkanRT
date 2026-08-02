@@ -52,7 +52,7 @@ void main()
 
             vec3 pKd = max(imageLoad(kdBuff, gpos + offset).xyz, vec3(0.1));
             vec3 pVal = imageLoad(inImage, gpos + offset).xyz;
-            vec3 pDem = cVal/cKd;
+            vec3 pDem = pVal/pKd;
             vec3 pNrm = imageLoad(ndBuff, gpos + offset).xyz;
             float pDepth = imageLoad(ndBuff, gpos + offset).w;
 
